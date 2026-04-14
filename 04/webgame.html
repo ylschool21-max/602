@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Maple Rain Catch Game - Easy Mode</title>
+    <title>AI Book Catch Game - Easy Mode</title>
     <!-- MediaPipe Hands & Camera Utils -->
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
@@ -41,11 +41,36 @@
             border-radius: 10px;
             z-index: 10;
         }
+        /* Home Button Styling */
+        #homeBtn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            padding: 12px 24px;
+            background-color: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 2px solid white;
+            border-radius: 30px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 18px;
+            z-index: 100;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(5px);
+        }
+        #homeBtn:hover {
+            background-color: white;
+            color: black;
+            transform: scale(1.05);
+        }
     </style>
 </head>
 <body>
 
     <div id="container">
+        <!-- Home Button -->
+        <a href="../index.html" id="homeBtn">홈으로 가기</a>
+        
         <div id="loading">카메라 및 AI 모델 로딩 중...</div>
         <canvas id="gameCanvas"></canvas>
     </div>
@@ -87,8 +112,8 @@
         let particles = [];
         
         // Multi-Target System (Easy Mode)
-        const maxLeaves = 4; // 유아용으로 개수를 절반으로 줄임
-        let leaves = [];
+        const maxBooks = 4; // 책의 개수
+        let books = [];
 
         // Hand State
         let handX = -100;
@@ -97,27 +122,27 @@
         function resize() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
-            if (!gameActive && !gameOver) initLeaves();
+            if (!gameActive && !gameOver) initBooks();
         }
         window.addEventListener('resize', resize);
         resize();
 
-        function initLeaves() {
-            leaves = [];
-            for (let i = 0; i < maxLeaves; i++) {
-                leaves.push(createLeaf());
+        function initBooks() {
+            books = [];
+            for (let i = 0; i < maxBooks; i++) {
+                books.push(createBook());
             }
         }
 
-        function createLeaf() {
+        function createBook() {
             return {
                 x: Math.random() * (canvas.width - 100) + 50,
                 y: -Math.random() * canvas.height, 
-                speed: 1.5 + Math.random() * 2.5, // 속도도 약간 느리게 조정
-                radius: 45, // 잡기 쉽게 크기를 약간 키움
-                rotation: Math.random() * Math.PI * 2,
-                spin: (Math.random() - 0.5) * 0.05,
-                emoji: "🍁"
+                speed: 1.5 + Math.random() * 2.5, 
+                radius: 45, 
+                rotation: Math.random() * Math.PI * 0.2, // 책은 너무 많이 회전하지 않게 조절
+                spin: (Math.random() - 0.5) * 0.02,
+                emoji: "📚" // 나뭇잎 대신 책 그림으로 변경
             };
         }
 
@@ -136,7 +161,7 @@
                     vx: (Math.random() - 0.5) * 12,
                     vy: (Math.random() - 0.5) * 12,
                     life: 1.0,
-                    color: `hsl(${Math.random() * 30 + 10}, 90%, 65%)`
+                    color: `hsl(${Math.random() * 60 + 180}, 90%, 65%)` // 책 테마에 맞춰 파란색/청록색 파티클
                 });
             }
         }
@@ -156,7 +181,7 @@
                 ctx.fillRect(20, 20, 280, 110);
             }
             
-            ctx.fillStyle = "#00FF00"; // 점수 색상을 더 밝게
+            ctx.fillStyle = "#00FF00"; 
             ctx.font = "bold 28px sans-serif";
             ctx.textAlign = "left";
             ctx.fillText(`점수: ${score} / 100`, 45, 65);
@@ -164,35 +189,35 @@
             ctx.font = "24px sans-serif";
             ctx.fillText(`남은 시간: ${Math.max(0, timeLeft)}초`, 45, 105);
 
-            // 2. Draw & Update Leaves
+            // 2. Draw & Update Books
             if (!gameOver) {
-                leaves.forEach(leaf => {
-                    leaf.y += leaf.speed;
-                    leaf.rotation += leaf.spin;
+                books.forEach(book => {
+                    book.y += book.speed;
+                    book.rotation += book.spin;
 
-                    if (leaf.y > canvas.height + 60) {
-                        Object.assign(leaf, createLeaf());
-                        leaf.y = -60;
+                    if (book.y > canvas.height + 60) {
+                        Object.assign(book, createBook());
+                        book.y = -60;
                     }
 
                     ctx.save();
-                    ctx.translate(leaf.x, leaf.y);
-                    ctx.rotate(leaf.rotation);
-                    ctx.font = "80px serif"; // 나뭇잎을 더 크게
+                    ctx.translate(book.x, book.y);
+                    ctx.rotate(book.rotation);
+                    ctx.font = "80px serif"; 
                     ctx.textAlign = "center";
                     ctx.textBaseline = "middle";
-                    ctx.fillText(leaf.emoji, 0, 0);
+                    ctx.fillText(book.emoji, 0, 0);
                     ctx.restore();
 
                     // Collision Check
                     if (gameActive) {
-                        const dist = Math.hypot(handX - leaf.x, handY - leaf.y);
-                        if (dist < leaf.radius + 30) {
-                            score += 10; // 나뭇잎 하나당 10점 (Easy Mode)
+                        const dist = Math.hypot(handX - book.x, handY - book.y);
+                        if (dist < book.radius + 30) {
+                            score += 10; 
                             playPopSound();
-                            createParticles(leaf.x, leaf.y);
-                            Object.assign(leaf, createLeaf());
-                            leaf.y = -60;
+                            createParticles(book.x, book.y);
+                            Object.assign(book, createBook());
+                            book.y = -60;
                             
                             if (score >= 100) endGame("success");
                         }
@@ -220,7 +245,7 @@
             // 4. Hand Cursor
             ctx.beginPath();
             ctx.arc(handX, handY, 35, 0, Math.PI * 2);
-            ctx.fillStyle = "rgba(255, 255, 0, 0.4)"; // 노란색으로 변경하여 눈에 더 잘 띄게 함
+            ctx.fillStyle = "rgba(255, 255, 0, 0.4)"; 
             ctx.fill();
             ctx.strokeStyle = "white";
             ctx.lineWidth = 3;
@@ -233,7 +258,7 @@
                 ctx.fillStyle = "white";
                 ctx.font = "bold 80px sans-serif";
                 ctx.textAlign = "center";
-                ctx.fillText(gameResult === "success" ? "성공! 참 잘했어요 👏" : "다음에 또 해요! 😊", canvas.width/2, canvas.height/2 - 40);
+                ctx.fillText(gameResult === "success" ? "성공! 독서왕 탄생 👏" : "다음에 또 해요! 😊", canvas.width/2, canvas.height/2 - 40);
                 ctx.font = "40px sans-serif";
                 ctx.fillText(`최종 점수: ${score}점`, canvas.width/2, canvas.height/2 + 50);
             }
@@ -246,8 +271,8 @@
             gameOver = true;
             gameResult = result;
             let msg = result === "success" 
-                ? "축하합니다! 백 점을 달성하여 게임에서 성공했습니다. 정말 잘했어요!" 
-                : `시간이 다 되었어요. 최종 점수는 ${score}점이에요. 아쉽지만 다음에 또 해봐요!`;
+                ? "축하합니다! 백 점을 달성하여 게임에서 성공했습니다. 정말 대단한 독서왕이네요!" 
+                : `시간이 다 되었어요. 최종 점수는 ${score}점이에요. 아쉽지만 다음에 또 책을 잡아봐요!`;
             speak(msg);
         }
 
@@ -292,7 +317,7 @@
         camera.start().then(() => {
             loadingEl.style.display = 'none';
             gameActive = true;
-            initLeaves();
+            initBooks();
             const timer = setInterval(() => {
                 if (gameOver) { clearInterval(timer); return; }
                 timeLeft--;
