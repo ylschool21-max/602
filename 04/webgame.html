@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Maple Rain Catch Game - Easy Mode</title>
+    <!-- MediaPipe Hands & Camera Utils -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #1a1a1a;
+            font-family: 'Pretendard', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        canvas {
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            background-color: #000;
+        }
+        #loading {
+            position: absolute;
+            color: white;
+            font-size: 24px;
+            background: rgba(0,0,0,0.7);
+            padding: 20px;
+            border-radius: 10px;
+            z-index: 10;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="container">
+        <div id="loading">카메라 및 AI 모델 로딩 중...</div>
+        <canvas id="gameCanvas"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const loadingEl = document.getElementById('loading');
+
+        // Audio Context
+        let audioCtx = null;
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playPopSound() {
+            if (!audioCtx) return;
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(600 + Math.random() * 200, audioCtx.currentTime);
+            oscillator.frequency.exponentialRampToValueAtTime(150, audioCtx.currentTime + 0.15);
+            gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            oscillator.start();
+            oscillator.stop(audioCtx.currentTime + 0.15);
+        }
+
+        // Game State
+        let score = 0;
+        let timeLeft = 60;
+        let gameActive = false;
+        let gameOver = false;
+        let gameResult = "";
+        let particles = [];
+        
+        // Multi-Target System (Easy Mode)
+        const maxLeaves = 4; // 유아용으로 개수를 절반으로 줄임
+        let leaves = [];
+
+        // Hand State
+        let handX = -100;
+        let handY = -100;
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            if (!gameActive && !gameOver) initLeaves();
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        function initLeaves() {
+            leaves = [];
+            for (let i = 0; i < maxLeaves; i++) {
+                leaves.push(createLeaf());
+            }
+        }
+
+        function createLeaf() {
+            return {
+                x: Math.random() * (canvas.width - 100) + 50,
+                y: -Math.random() * canvas.height, 
+                speed: 1.5 + Math.random() * 2.5, // 속도도 약간 느리게 조정
+                radius: 45, // 잡기 쉽게 크기를 약간 키움
+                rotation: Math.random() * Math.PI * 2,
+                spin: (Math.random() - 0.5) * 0.05,
+                emoji: "🍁"
+            };
+        }
+
+        function speak(text) {
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'ko-KR';
+            utterance.rate = 1.0;
+            window.speechSynthesis.speak(utterance);
+        }
+
+        function createParticles(x, y) {
+            for(let i = 0; i < 15; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 12,
+                    vy: (Math.random() - 0.5) * 12,
+                    life: 1.0,
+                    color: `hsl(${Math.random() * 30 + 10}, 90%, 65%)`
+                });
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (!gameActive && !gameOver) return; 
+
+            // 1. UI Rendering
+            ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+            if (ctx.roundRect) {
+                ctx.beginPath();
+                ctx.roundRect(20, 20, 280, 110, 15);
+                ctx.fill();
+            } else {
+                ctx.fillRect(20, 20, 280, 110);
+            }
+            
+            ctx.fillStyle = "#00FF00"; // 점수 색상을 더 밝게
+            ctx.font = "bold 28px sans-serif";
+            ctx.textAlign = "left";
+            ctx.fillText(`점수: ${score} / 100`, 45, 65);
+            ctx.fillStyle = "white";
+            ctx.font = "24px sans-serif";
+            ctx.fillText(`남은 시간: ${Math.max(0, timeLeft)}초`, 45, 105);
+
+            // 2. Draw & Update Leaves
+            if (!gameOver) {
+                leaves.forEach(leaf => {
+                    leaf.y += leaf.speed;
+                    leaf.rotation += leaf.spin;
+
+                    if (leaf.y > canvas.height + 60) {
+                        Object.assign(leaf, createLeaf());
+                        leaf.y = -60;
+                    }
+
+                    ctx.save();
+                    ctx.translate(leaf.x, leaf.y);
+                    ctx.rotate(leaf.rotation);
+                    ctx.font = "80px serif"; // 나뭇잎을 더 크게
+                    ctx.textAlign = "center";
+                    ctx.textBaseline = "middle";
+                    ctx.fillText(leaf.emoji, 0, 0);
+                    ctx.restore();
+
+                    // Collision Check
+                    if (gameActive) {
+                        const dist = Math.hypot(handX - leaf.x, handY - leaf.y);
+                        if (dist < leaf.radius + 30) {
+                            score += 10; // 나뭇잎 하나당 10점 (Easy Mode)
+                            playPopSound();
+                            createParticles(leaf.x, leaf.y);
+                            Object.assign(leaf, createLeaf());
+                            leaf.y = -60;
+                            
+                            if (score >= 100) endGame("success");
+                        }
+                    }
+                });
+            }
+
+            // 3. Particles
+            particles.forEach((p, index) => {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life -= 0.025;
+                if (p.life <= 0) {
+                    particles.splice(index, 1);
+                } else {
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, 6 * p.life, 0, Math.PI * 2);
+                    ctx.fillStyle = p.color;
+                    ctx.globalAlpha = p.life;
+                    ctx.fill();
+                    ctx.globalAlpha = 1.0;
+                }
+            });
+
+            // 4. Hand Cursor
+            ctx.beginPath();
+            ctx.arc(handX, handY, 35, 0, Math.PI * 2);
+            ctx.fillStyle = "rgba(255, 255, 0, 0.4)"; // 노란색으로 변경하여 눈에 더 잘 띄게 함
+            ctx.fill();
+            ctx.strokeStyle = "white";
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            // 5. Game Over
+            if (gameOver) {
+                ctx.fillStyle = "rgba(0,0,0,0.85)";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = "white";
+                ctx.font = "bold 80px sans-serif";
+                ctx.textAlign = "center";
+                ctx.fillText(gameResult === "success" ? "성공! 참 잘했어요 👏" : "다음에 또 해요! 😊", canvas.width/2, canvas.height/2 - 40);
+                ctx.font = "40px sans-serif";
+                ctx.fillText(`최종 점수: ${score}점`, canvas.width/2, canvas.height/2 + 50);
+            }
+
+            requestAnimationFrame(draw);
+        }
+
+        function endGame(result) {
+            if (gameOver) return;
+            gameOver = true;
+            gameResult = result;
+            let msg = result === "success" 
+                ? "축하합니다! 백 점을 달성하여 게임에서 성공했습니다. 정말 잘했어요!" 
+                : `시간이 다 되었어요. 최종 점수는 ${score}점이에요. 아쉽지만 다음에 또 해봐요!`;
+            speak(msg);
+        }
+
+        const hands = new Hands({
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+        });
+
+        hands.setOptions({
+            maxNumHands: 1,
+            modelComplexity: 1,
+            minDetectionConfidence: 0.5,
+            minTrackingConfidence: 0.5
+        });
+
+        hands.onResults((results) => {
+            if (gameOver) return;
+            ctx.save();
+            ctx.scale(-1, 1);
+            ctx.translate(-canvas.width, 0);
+            ctx.globalAlpha = 0.5;
+            ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
+            ctx.restore();
+
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                const landmarks = results.multiHandLandmarks[0];
+                handX = (1 - landmarks[9].x) * canvas.width;
+                handY = landmarks[9].y * canvas.height;
+            }
+        });
+
+        const videoElement = document.createElement('video');
+        const camera = new Camera(videoElement, {
+            onFrame: async () => {
+                await hands.send({image: videoElement});
+            },
+            width: 1280,
+            height: 720
+        });
+
+        window.addEventListener('mousedown', () => initAudio(), { once: true });
+
+        camera.start().then(() => {
+            loadingEl.style.display = 'none';
+            gameActive = true;
+            initLeaves();
+            const timer = setInterval(() => {
+                if (gameOver) { clearInterval(timer); return; }
+                timeLeft--;
+                if (timeLeft <= 0) { clearInterval(timer); endGame(score >= 100 ? "success" : "fail"); }
+            }, 1000);
+            draw();
+        });
+    </script>
+</body>
+</html>
