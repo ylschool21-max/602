@@ -146,8 +146,8 @@
             <h2 class="text-4xl font-gaegu font-bold text-sky-700 mb-12">선생님과 함께하는 재미있는 놀이카드</h2>
             
             <div class="grid md:grid-cols-3 gap-8">
-                <!-- Card 1: Book Catching -->
-                <div class="play-card bg-white p-8 rounded-3xl shadow-xl border-t-8 border-orange-400">
+                <!-- Card 1: Book Catching (Clicking card navigates to full game) -->
+                <div onclick="window.location.href='./04/webgame.html'" class="play-card bg-white p-8 rounded-3xl shadow-xl border-t-8 border-orange-400">
                     <div class="text-5xl mb-6">📖</div>
                     <h3 class="text-2xl font-bold text-gray-800 mb-4">책 잡기 놀이</h3>
                     <p class="text-gray-600 mb-6">하늘에서 떨어지는 지혜의 책을 <br>손으로 쏙쏙 잡아볼까요?</p>
@@ -156,7 +156,7 @@
                             <span id="target-book" class="absolute text-3xl cursor-pointer select-none" style="top: 10px; left: 50%;">📕</span>
                             <div id="catch-score" class="absolute bottom-1 right-2 text-xs text-orange-600 font-bold">잡은 횟수: 0</div>
                         </div>
-                        <p class="text-xs text-orange-400 mt-2">책을 클릭해서 잡아보세요!</p>
+                        <p class="text-xs text-orange-400 mt-2">카드를 눌러 게임을 시작해요!</p>
                     </div>
                 </div>
 
@@ -169,7 +169,7 @@
                         <div id="stack-container" class="bg-white rounded-lg">
                             <!-- Boxes will appear here -->
                         </div>
-                        <button onclick="addBox()" class="mt-4 bg-yellow-400 text-white px-4 py-2 rounded-full text-sm font-bold hover:bg-yellow-500 shadow-sm transition">
+                        <button onclick="event.stopPropagation(); addBox();" class="mt-4 bg-yellow-400 text-white px-4 py-2 rounded-full text-sm font-bold hover:bg-yellow-500 shadow-sm transition">
                             상자 쌓기!
                         </button>
                     </div>
@@ -182,10 +182,10 @@
                     <p class="text-gray-600 mb-6">카드 속에 숨은 내 단짝 친구는 <br>어디에 있을까요?</p>
                     <div class="bg-green-50 p-4 rounded-xl border border-green-100">
                         <div class="grid grid-cols-2 gap-2">
-                            <div onclick="flipCard(this)" class="h-16 bg-green-200 rounded-lg flex items-center justify-center text-2xl cursor-pointer hover:bg-green-300 transition">❓</div>
-                            <div onclick="flipCard(this)" class="h-16 bg-green-200 rounded-lg flex items-center justify-center text-2xl cursor-pointer hover:bg-green-300 transition">❓</div>
-                            <div onclick="flipCard(this)" class="h-16 bg-green-200 rounded-lg flex items-center justify-center text-2xl cursor-pointer hover:bg-green-300 transition">❓</div>
-                            <div onclick="flipCard(this)" class="h-16 bg-green-200 rounded-lg flex items-center justify-center text-2xl cursor-pointer hover:bg-green-300 transition">❓</div>
+                            <div onclick="event.stopPropagation(); flipCard(this)" class="h-16 bg-green-200 rounded-lg flex items-center justify-center text-2xl cursor-pointer hover:bg-green-300 transition">❓</div>
+                            <div onclick="event.stopPropagation(); flipCard(this)" class="h-16 bg-green-200 rounded-lg flex items-center justify-center text-2xl cursor-pointer hover:bg-green-300 transition">❓</div>
+                            <div onclick="event.stopPropagation(); flipCard(this)" class="h-16 bg-green-200 rounded-lg flex items-center justify-center text-2xl cursor-pointer hover:bg-green-300 transition">❓</div>
+                            <div onclick="event.stopPropagation(); flipCard(this)" class="h-16 bg-green-200 rounded-lg flex items-center justify-center text-2xl cursor-pointer hover:bg-green-300 transition">❓</div>
                         </div>
                         <p class="text-xs text-green-600 mt-2">두 장을 뒤집어 짝을 맞춰요!</p>
                     </div>
@@ -228,7 +228,7 @@
         }
 
         targetBook.addEventListener('click', (e) => {
-            e.stopPropagation();
+            e.stopPropagation(); // 카드 클릭 이벤트로 전파되지 않도록 방지
             score++;
             scoreDisplay.innerText = `잡은 횟수: ${score}`;
             moveBook();
